@@ -1,0 +1,45 @@
+name: Weekly Post Generator
+
+on:
+  # Run every Monday at 8:00 AM UTC
+  schedule:
+    - cron: "0 8 * * 1"
+
+  # Also allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      profile_url:
+        description: "LinkedIn profile URL to scrape"
+        required: false
+        default: ""
+
+jobs:
+  generate-posts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run post generator
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+        run: |
+          PROFILE="${{ github.event.inputs.profile_url || vars.DEFAULT_PROFILE_URL }}"
+          node index.js --profile "$PROFILE"
+
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-suggestions-${{ github.run_id }}
+          path: reports/
+          retention-days: 30
